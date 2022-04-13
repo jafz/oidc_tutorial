@@ -11,6 +11,13 @@ namespace AuthorizationServer.Controllers
 {
     public class AuthorizationController : Controller
     {
+        private readonly ILogger _logger;
+
+        public AuthorizationController(ILogger<AuthorizationController> logger)
+        {
+            _logger = logger;
+        }
+
         [HttpPost("~/connect/token"), Produces("application/json")]
         public async Task<IActionResult> ExchangeToken()
         {
@@ -18,6 +25,7 @@ namespace AuthorizationServer.Controllers
                           throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
 
             ClaimsPrincipal claimsPrincipal;
+            _logger.LogWarning("Get token via {grant} grant", request.GrantType);
 
             if (request.IsClientCredentialsGrantType())
             {
@@ -69,6 +77,8 @@ namespace AuthorizationServer.Controllers
             // https://dev.to/robinvanderknaap/setting-up-an-authorization-server-with-openiddict-part-iv-authorization-code-flow-3eh8
             var request = HttpContext.GetOpenIddictServerRequest() ??
                     throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
+
+            _logger.LogWarning("Authorize via {grant} grant", request.GrantType);
 
             // Retrieve the user principal stored in the authentication cookie.
             var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);

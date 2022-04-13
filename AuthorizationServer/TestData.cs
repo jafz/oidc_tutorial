@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using OpenIddict.Abstractions;
+﻿using OpenIddict.Abstractions;
 
 namespace AuthorizationServer
 {
@@ -16,7 +15,7 @@ namespace AuthorizationServer
         {
             using var scope = _serviceProvider.CreateScope();
 
-            var context = scope.ServiceProvider.GetRequiredService<DbContext>();
+            var context = scope.ServiceProvider.GetRequiredService<OpenIddictDbContext>();
             await context.Database.EnsureCreatedAsync(cancellationToken);
 
             var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();

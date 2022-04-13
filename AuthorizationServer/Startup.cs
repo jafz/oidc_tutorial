@@ -1,18 +1,32 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuthorizationServer
 {
-    public class Startup
+    public class OpenIddictDbContext : DbContext
     {
-        public Startup()
+        public OpenIddictDbContext(DbContextOptions<OpenIddictDbContext> options) : base(options)
         {
 
         }
+    }
+    public class DataProtectionContext : DbContext, IDataProtectionKeyContext
+    {
+        public DataProtectionContext(DbContextOptions<DataProtectionContext> options) : base(options)
+        {
+
+        }
+        public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
+    }
+    public class Startup
+    {
         public Startup(IConfigurationRoot configuration)
         {
-            Configuration = configuration;
+            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
+
         public IConfigurationRoot Configuration { get; }
         public void ConfigureServices(IServiceCollection services)
         {
@@ -24,14 +38,26 @@ namespace AuthorizationServer
                     options.LoginPath = "/account/login";
                 });
 
-            services.AddDbContext<DbContext>(options =>
+            services.AddDbContext<OpenIddictDbContext>(options =>
             {
                 // Configure the context to use an in-memory store.
-                options.UseInMemoryDatabase(nameof(DbContext));
+                //options.UseInMemoryDatabase(nameof(DbContext));
+                options.UseSqlServer("Data Source=localhost;Initial Catalog=dev_30_auth;Integrated Security=True;MultipleActiveResultSets=True");
 
                 // Register the entity sets needed by OpenIddict.
                 options.UseOpenIddict();
             });
+            //services.AddDbContext<DataProtectionContext>(options =>
+            //{
+            //    options.UseSqlServer("Data Source=localhost;Initial Catalog=dev_30_auth;Integrated Security=True;MultipleActiveResultSets=True");
+            //});
+
+            services.AddDataProtection()
+                .PersistKeysToFileSystem(new DirectoryInfo(@"c:\dev\__delme\_dpapi_keys"))
+                //.ProtectKeysWithCertificate(new System.Security.Cryptography.X509Certificates.X509Certificate2("path", "password"))
+                //.PersistKeysToDbContext<DataProtectionContext>()
+                .SetApplicationName("Vinna")
+                ;
 
             services.AddOpenIddict()
                 // Register the OpenIddict core components.
@@ -39,7 +65,7 @@ namespace AuthorizationServer
                 {
                     // Configure OpenIddict to use the EF Core stores/models.
                     options.UseEntityFrameworkCore()
-                        .UseDbContext<DbContext>();
+                        .UseDbContext<OpenIddictDbContext>();
                 })
 
                 // Register the OpenIddict server components.
@@ -74,6 +100,8 @@ namespace AuthorizationServer
                         .DisableAccessTokenEncryption()
                         ;
 
+                    options.UseDataProtection();
+
                     // register scopes (permissions)
                     options.RegisterScopes("api");
 
@@ -92,6 +120,13 @@ namespace AuthorizationServer
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            // Uncomment the following lines to set up the DataProtection DB context
+            //using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
+            //{
+            //    var context = serviceScope.ServiceProvider.GetRequiredService<DataProtectionContext>();
+            //    context.Database.Migrate();
+            //}
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
