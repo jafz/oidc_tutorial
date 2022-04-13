@@ -46,7 +46,26 @@ namespace AuthorizationServer
                 .AddServer(options =>
                 {
                     options.AllowClientCredentialsFlow();
-                    options.SetTokenEndpointUris("/connect/token");
+                    // AllowAuthorizationCodeFlow enables the flow,
+                    // RequireProofKeyForCodeExchange is called directly after that, this makes sure all clients are required to use PKCE (Proof Key for Code Exchange).
+                    options
+                        .AllowAuthorizationCodeFlow()
+                        .RequireProofKeyForCodeExchange();
+                    options
+                        .AllowRefreshTokenFlow();
+
+                    // The authorization code flow dictates that the user first authorizes the client to make requests in the user's behalf.
+                    // Therefore, we need to implement an authorization endpoint which returns an authorization code to the client when the user allows it (/connect/authorize)
+                    options
+                        .SetAuthorizationEndpointUris("/connect/authorize")
+                        .SetTokenEndpointUris("/connect/token")
+                        .SetUserinfoEndpointUris("/connect/userinfo")
+                        ;
+
+                    // when storing many claims - use reference (opaque) tokens
+                    options
+                        .UseReferenceAccessTokens()
+                        .UseReferenceRefreshTokens();
 
                     // Encryption and signing of tokens
                     options
@@ -59,9 +78,13 @@ namespace AuthorizationServer
                     options.RegisterScopes("api");
 
                     // Register the ASP.NET Core host and configure the ASP.NET Core-specific options.
+                    // call EnableTokenEndpointPassthrough otherwise requests to our future token endpoint are blocked
                     options
                         .UseAspNetCore()
-                        .EnableTokenEndpointPassthrough();
+                        .EnableTokenEndpointPassthrough()
+                        .EnableAuthorizationEndpointPassthrough()
+                        .EnableUserinfoEndpointPassthrough()
+                        ;
                 });
 
             services.AddHostedService<TestData>();
@@ -79,6 +102,7 @@ namespace AuthorizationServer
             app.UseRouting();
 
             app.UseAuthentication();
+            app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {

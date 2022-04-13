@@ -28,12 +28,65 @@ namespace AuthorizationServer
                     ClientId = "postman",
                     ClientSecret = "postman-secret",
                     DisplayName = "Postman",
+                    RedirectUris = { new Uri("https://oauth.pstmn.io/v1/callback"), new Uri("http://postman") },
                     Permissions =
                     {
+                        OpenIddictConstants.Permissions.Endpoints.Authorization,
                         OpenIddictConstants.Permissions.Endpoints.Token,
-                        OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
 
-                        OpenIddictConstants.Permissions.Prefixes.Scope + "api"
+                        OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                        OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
+                        OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+
+                        OpenIddictConstants.Permissions.Prefixes.Scope + "api",
+
+                        OpenIddictConstants.Permissions.ResponseTypes.Code,
+                    }
+                }, cancellationToken);
+            }
+            if (await manager.FindByClientIdAsync("postman2", cancellationToken) is null)
+            {
+                await manager.CreateAsync(new OpenIddictApplicationDescriptor
+                {
+                    ClientId = "postman2",
+                    ClientSecret = "postman-secret",
+                    DisplayName = "Postman",
+                    RedirectUris = { new Uri("https://oauth.pstmn.io/v1/callback"), new Uri("http://postman") },
+                    Permissions =
+                    {
+                        OpenIddictConstants.Permissions.Endpoints.Authorization,
+                        OpenIddictConstants.Permissions.Endpoints.Token,
+
+                        OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                        OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
+                        OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+
+                        OpenIddictConstants.Permissions.Prefixes.Scope + "api",
+
+                        OpenIddictConstants.Permissions.ResponseTypes.Code,
+                    }
+                }, cancellationToken);
+            }
+            if (await manager.FindByClientIdAsync("insomnia", cancellationToken) is null)
+            {
+                await manager.CreateAsync(new OpenIddictApplicationDescriptor
+                {
+                    ClientId = "insomnia",
+                    //ClientSecret = "insomnia-secret",
+                    DisplayName = "Insomnia",
+                    RedirectUris = { new Uri("http://insomnia"), new Uri("https://www.google.com") },
+                    Permissions =
+                    {
+                        OpenIddictConstants.Permissions.Endpoints.Authorization,
+                        OpenIddictConstants.Permissions.Endpoints.Token,
+
+                        OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                        OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
+                        OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+
+                        OpenIddictConstants.Permissions.Prefixes.Scope + "api",
+
+                        OpenIddictConstants.Permissions.ResponseTypes.Code,
                     }
                 }, cancellationToken);
             }
