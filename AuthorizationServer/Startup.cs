@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -45,6 +44,7 @@ namespace AuthorizationServer
                 options.UseSqlServer("Data Source=localhost;Initial Catalog=dev_30_auth;Integrated Security=True;MultipleActiveResultSets=True");
 
                 // Register the entity sets needed by OpenIddict.
+                // Note: use the generic overload if you need to replace the default OpenIddict entities.
                 options.UseOpenIddict();
             });
             //services.AddDbContext<DataProtectionContext>(options =>
@@ -52,12 +52,13 @@ namespace AuthorizationServer
             //    options.UseSqlServer("Data Source=localhost;Initial Catalog=dev_30_auth;Integrated Security=True;MultipleActiveResultSets=True");
             //});
 
-            services.AddDataProtection()
-                .PersistKeysToFileSystem(new DirectoryInfo(@"c:\dev\__delme\_dpapi_keys"))
-                //.ProtectKeysWithCertificate(new System.Security.Cryptography.X509Certificates.X509Certificate2("path", "password"))
-                //.PersistKeysToDbContext<DataProtectionContext>()
-                .SetApplicationName("Vinna")
-                ;
+            //services.AddDataProtection()
+            //    .PersistKeysToFileSystem(new DirectoryInfo(@"c:\dev\__delme\_dpapi_keys"))
+            //    //.ProtectKeysWithCertificate(new System.Security.Cryptography.X509Certificates.X509Certificate2("path", "password"))
+            //    // requires: Microsoft.AspNetCore.DataProtection.EntityFrameworkCore
+            //    //.PersistKeysToDbContext<DataProtectionContext>()
+            //    .SetApplicationName("Vinna")
+            //    ;
 
             services.AddOpenIddict()
                 // Register the OpenIddict core components.
@@ -85,8 +86,16 @@ namespace AuthorizationServer
                     options
                         .SetAuthorizationEndpointUris("/connect/authorize")
                         .SetTokenEndpointUris("/connect/token")
-                        .SetUserinfoEndpointUris("/connect/userinfo")
-                        ;
+                        .SetUserinfoEndpointUris("/connect/userinfo");
+
+                    // introspection endpoint is created automatically. It only includes the claims iff:
+                    //    - claims are in access token
+                    //    - principal.SetResources("client id of app doing the introspection")
+                    //    - api doing introspection is a confidential client (and forced to send a client_secret)
+                    // https://stackoverflow.com/questions/64564559/how-to-get-introspect-to-return-information-such-as-email-with-openiddict
+                    options
+                        .SetIntrospectionEndpointUris("/connect/introspect");
+                    ;
 
                     // when storing many claims - use reference (opaque) tokens
                     options
@@ -100,6 +109,7 @@ namespace AuthorizationServer
                         .DisableAccessTokenEncryption()
                         ;
 
+                    // required for recognizing refresh tokens after restart
                     options.UseDataProtection();
 
                     // register scopes (permissions)
@@ -113,8 +123,27 @@ namespace AuthorizationServer
                         .EnableAuthorizationEndpointPassthrough()
                         .EnableUserinfoEndpointPassthrough()
                         ;
-                });
+                })
+            .AddValidation(options =>
+            {
+                // validation is used on resource services.
 
+                // Import the configuration from the local OpenIddict server instance.
+                options.UseLocalServer();
+
+                options.UseIntrospection()
+                   .SetClientId("resource_server_1")
+                   .SetClientSecret("846B62D0-DEF9-4215-A99D-86E6B8DAB342");
+
+
+                // Register the ASP.NET Core host.
+                options.UseAspNetCore();
+                options.UseDataProtection();
+            })
+                ;
+
+            // Register the worker responsible of seeding the database with the sample clients.
+            // Note: in a real world application, this step should be part of a setup script.
             services.AddHostedService<TestData>();
         }
 

@@ -1,7 +1,10 @@
 using AuthorizationServer;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
+//builder.AddSerilog();
+builder.AddSimpleConsoleLogging();
 
 var startup = new Startup(builder.Configuration);
 startup.ConfigureServices(builder.Services);

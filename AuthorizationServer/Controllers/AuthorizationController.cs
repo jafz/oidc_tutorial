@@ -40,10 +40,15 @@ namespace AuthorizationServer.Controllers
                 // Add some claim, don't forget to add destination otherwise it won't be added to the access token.
                 identity.AddClaim("some-claim idTOK", "for ID token", OpenIddictConstants.Destinations.IdentityToken);
                 identity.AddClaim("some-claim2", "for access token", OpenIddictConstants.Destinations.AccessToken);
+                for (int i = 0; i < 10; i++)
+                {
+                    identity.AddClaim($"superClaim {i}", "value " + i, OpenIddictConstants.Destinations.IdentityToken, OpenIddictConstants.Destinations.AccessToken);
+                }
 
                 claimsPrincipal = new ClaimsPrincipal(identity);
 
                 claimsPrincipal.SetScopes(request.GetScopes());
+                claimsPrincipal.SetResources("postman");
             }
             else if (request.IsAuthorizationCodeGrantType())
             {
@@ -78,10 +83,9 @@ namespace AuthorizationServer.Controllers
             var request = HttpContext.GetOpenIddictServerRequest() ??
                     throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
 
-            _logger.LogWarning("Authorize via {grant} grant", request.GrantType);
-
             // Retrieve the user principal stored in the authentication cookie.
             var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
 
             // If the user principal can't be extracted, redirect the user to the login page.
             if (!result.Succeeded)
@@ -94,12 +98,14 @@ namespace AuthorizationServer.Controllers
                     {
                         RedirectUri = redirectUri
                     });
+                _logger.LogWarning("Authorization requested. User is not yet authenticated. Redirecting to {redirectUri}", redirectUri);
                 return challenge;
             }
 
             if (result.Principal.Identity == null || result.Principal.Identity.Name == null)
                 throw new InvalidOperationException("Can't have empty principal");
 
+            _logger.LogWarning("Authorization requested. User {user} requests access code", result.Principal);
             // Create a new claims principal
             var claims = new List<Claim>
             {
@@ -115,6 +121,7 @@ namespace AuthorizationServer.Controllers
 
             // Set requested scopes (this is not done automatically)
             claimsPrincipal.SetScopes(request.GetScopes());
+            claimsPrincipal.SetResources("postman");
 
             // Signing in with the OpenIddict authentiction scheme trigger OpenIddict to issue a code (which can be exchanged for an access token)
             var signIn = SignIn(claimsPrincipal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
