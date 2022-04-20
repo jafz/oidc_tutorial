@@ -35,7 +35,8 @@ namespace AuthorizationServer
                 .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
                 {
                     options.LoginPath = "/account/login";
-                });
+                })
+                ;
 
             services.AddDbContext<OpenIddictDbContext>(options =>
             {
@@ -59,6 +60,7 @@ namespace AuthorizationServer
             //    //.PersistKeysToDbContext<DataProtectionContext>()
             //    .SetApplicationName("Vinna")
             //    ;
+
 
             services.AddOpenIddict()
                 // Register the OpenIddict core components.
@@ -107,7 +109,7 @@ namespace AuthorizationServer
                         .AddEphemeralEncryptionKey()
                         .AddEphemeralSigningKey()
                         .DisableAccessTokenEncryption()
-                        ;
+        ;
 
                     // required for recognizing refresh tokens after restart
                     options.UseDataProtection();
@@ -121,8 +123,7 @@ namespace AuthorizationServer
                         .UseAspNetCore()
                         .EnableTokenEndpointPassthrough()
                         .EnableAuthorizationEndpointPassthrough()
-                        .EnableUserinfoEndpointPassthrough()
-                        ;
+                        .EnableUserinfoEndpointPassthrough();
                 })
             .AddValidation(options =>
             {
@@ -131,10 +132,10 @@ namespace AuthorizationServer
                 // Import the configuration from the local OpenIddict server instance.
                 options.UseLocalServer();
 
-                options.UseIntrospection()
-                   .SetClientId("resource_server_1")
-                   .SetClientSecret("846B62D0-DEF9-4215-A99D-86E6B8DAB342");
-
+                // makes oidc use introspection (-> web request) instead of direct (->db) verification of tokens
+                //options.UseIntrospection()
+                //   .SetClientId("resource_server_1")
+                //   .SetClientSecret("846B62D0-DEF9-4215-A99D-86E6B8DAB342");
 
                 // Register the ASP.NET Core host.
                 options.UseAspNetCore();
@@ -145,7 +146,25 @@ namespace AuthorizationServer
             // Register the worker responsible of seeding the database with the sample clients.
             // Note: in a real world application, this step should be part of a setup script.
             services.AddHostedService<TestData>();
+
+            //services.AddTransient<IClaimsTransformation, ClaimsTransformer>();
         }
+
+        //    public class ClaimsTransformer : IClaimsTransformation
+        //    {
+        //        public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
+        //        {
+        //            // This will run every time Authenticate is called so its better to create a new Principal
+        //            var transformed = new ClaimsPrincipal();
+        //            transformed.AddIdentities(principal.Identities);
+        //            transformed.AddIdentity(new ClaimsIdentity(new Claim[]
+        //            {
+        //new Claim("Transformed", DateTime.Now.ToString(CultureInfo.InvariantCulture))
+        //            }));
+        //            return Task.FromResult(transformed);
+        //        }
+
+        //    }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
@@ -167,6 +186,7 @@ namespace AuthorizationServer
 
             app.UseAuthentication();
             app.UseAuthorization();
+
 
             app.UseEndpoints(endpoints =>
             {

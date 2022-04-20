@@ -3,19 +3,25 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
+using System.Globalization;
 using System.Security.Claims;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace AuthorizationServer.Controllers
 {
     public class AuthorizationController : Controller
     {
         private readonly ILogger _logger;
+        private readonly IOpenIddictScopeManager _manager;
 
-        public AuthorizationController(ILogger<AuthorizationController> logger)
+        public AuthorizationController(ILogger<AuthorizationController> logger, IOpenIddictScopeManager manager)
         {
             _logger = logger;
+            _manager = manager;
         }
 
         [HttpPost("~/connect/token"), Produces("application/json")]
@@ -52,6 +58,7 @@ namespace AuthorizationServer.Controllers
             }
             else if (request.IsAuthorizationCodeGrantType())
             {
+
                 var authResult = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
                 if (authResult.Principal == null)
                     throw new InvalidOperationException("Failed to authenticate user");
@@ -74,6 +81,53 @@ namespace AuthorizationServer.Controllers
             return SignIn(claimsPrincipal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
 
+        private async Task<IActionResult> HandleHardcodedIdentifierAsync(OpenIddictRequest request)
+        {
+            var identifier = (int?)request["hardcoded_identity_id"];
+            if (identifier is not (1 or 2))
+            {
+                var props = new Dictionary<string, string>
+                {
+                    [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidRequest,
+                    [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The specified hardcoded identity is invalid."
+                };
+
+                return Challenge(
+                    properties: new AuthenticationProperties(props!),
+                    authenticationSchemes: new[] { OpenIddictServerAspNetCoreDefaults.AuthenticationScheme }
+                    );
+            }
+
+            // Create a new identity and populate it based on the specified hardcoded identity identifier.
+            var identity = new ClaimsIdentity(TokenValidationParameters.DefaultAuthenticationType);
+            identity.AddClaim(new Claim(Claims.Subject, identifier.Value.ToString(CultureInfo.InvariantCulture)));
+            identity.AddClaim(new Claim(Claims.Name, identifier switch
+            {
+                1 => "Alice",
+                2 => "Bob",
+                _ => throw new InvalidOperationException()
+            }).SetDestinations(Destinations.AccessToken));
+
+            // Note: in this sample, the client is granted all the requested scopes for the first identity (Alice)
+            // but for the second one (Bob), only the "api1" scope can be granted, which will cause requests sent
+            // to Zirku.Api2 on behalf of Bob to be automatically rejected by the OpenIddict validation handler,
+            // as the access token representing Bob won't contain the "resource_server_2" audience required by Api2.
+            var principal = new ClaimsPrincipal(identity);
+
+            principal.SetScopes(identifier switch
+            {
+                1 => request.GetScopes(),
+                2 => new[] { "api1" }.Intersect(request.GetScopes()),
+                _ => throw new InvalidOperationException()
+            });
+
+            var allResources = await _manager.ListResourcesAsync(principal.GetScopes()).ToListAsync();
+
+            principal.SetResources(allResources);
+
+            return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        }
+
         [HttpGet("~/connect/authorize")]
         [HttpPost("~/connect/authorize")]
         [IgnoreAntiforgeryToken]
@@ -83,9 +137,10 @@ namespace AuthorizationServer.Controllers
             var request = HttpContext.GetOpenIddictServerRequest() ??
                     throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
 
+            var identifier = (int?)request["hardcoded_identity_id"];
+
             // Retrieve the user principal stored in the authentication cookie.
             var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
 
             // If the user principal can't be extracted, redirect the user to the login page.
             if (!result.Succeeded)
@@ -100,6 +155,12 @@ namespace AuthorizationServer.Controllers
                     });
                 _logger.LogWarning("Authorization requested. User is not yet authenticated. Redirecting to {redirectUri}", redirectUri);
                 return challenge;
+            }
+
+            if (identifier is not null)
+            {
+                var retVal = await HandleHardcodedIdentifierAsync(request);
+                return retVal;
             }
 
             if (result.Principal.Identity == null || result.Principal.Identity.Name == null)

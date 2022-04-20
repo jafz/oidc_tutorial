@@ -1,4 +1,5 @@
 ﻿using OpenIddict.Abstractions;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace AuthorizationServer
 {
@@ -92,7 +93,75 @@ namespace AuthorizationServer
                     }
                 }, cancellationToken);
             }
+            if (await manager.FindByClientIdAsync("console_app") is null)
+            {
+                await manager.CreateAsync(new OpenIddictApplicationDescriptor
+                {
+                    ClientId = "console_app",
+                    RedirectUris =
+                {
+                    new Uri("http://localhost:8739/")
+                },
+                    Permissions =
+                {
+                    Permissions.Endpoints.Authorization,
+                    Permissions.Endpoints.Token,
+                    Permissions.GrantTypes.AuthorizationCode,
+                    Permissions.ResponseTypes.Code,
+                    Permissions.Scopes.Email,
+                    Permissions.Scopes.Profile,
+                    Permissions.Scopes.Roles,
+                    Permissions.Prefixes.Scope + "api1",
+                    Permissions.Prefixes.Scope + "api2"
+                }
+                });
+            }
+
+            if (await manager.FindByClientIdAsync("resource_server_1") is null)
+            {
+                await manager.CreateAsync(new OpenIddictApplicationDescriptor
+                {
+                    ClientId = "resource_server_1",
+                    ClientSecret = "846B62D0-DEF9-4215-A99D-86E6B8DAB342",
+                    Permissions =
+                {
+                    Permissions.Endpoints.Introspection
+                }
+                });
+            }
+
+            await CreateScopesAsync(scope);
         }
+
+        async Task CreateScopesAsync(IServiceScope scope)
+        {
+            var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
+
+            if (await manager.FindByNameAsync("api1") is null)
+            {
+                await manager.CreateAsync(new OpenIddictScopeDescriptor
+                {
+                    Name = "api1",
+                    Resources =
+                {
+                    "resource_server_1"
+                }
+                });
+            }
+
+            if (await manager.FindByNameAsync("api2") is null)
+            {
+                await manager.CreateAsync(new OpenIddictScopeDescriptor
+                {
+                    Name = "api2",
+                    Resources =
+                {
+                    "resource_server_2"
+                }
+                });
+            }
+        }
+
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
