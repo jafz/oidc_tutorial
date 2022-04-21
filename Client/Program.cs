@@ -62,6 +62,9 @@ while (true)
     else
     {
         Console.WriteLine("Response from Api1: {0}", await GetResourceFromApi1Async(result.AccessToken, resourceUri1));
+        // test caching
+        Console.WriteLine("Response from Api1: {0}", await GetResourceFromApi1Async(result.AccessToken, resourceUri1));
+        Console.WriteLine("Response from Api1: {0}", await GetResourceFromApi1Async(result.AccessToken, resourceUri1));
         // Console.WriteLine("Response from Api2: {0}", await GetResourceFromApi2Async(result.AccessToken));
         break;
     }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using OpenIddict.Validation.AspNetCore;
+using ResourceService;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,6 +8,8 @@ builder.Services.AddLogging(opt =>
 {
     opt.AddSimpleConsole(opt => opt.TimestampFormat = "[HH:mm:ss] ");
 });
+
+//builder.Services.AddDistributedMemoryCache();
 
 builder.Services.AddOpenIddict()
     .AddValidation(options =>
@@ -20,10 +23,12 @@ builder.Services.AddOpenIddict()
         // credentials used when communicating with the remote introspection endpoint
         options.UseIntrospection()
         .SetClientId("resource_server_1")
-        .SetClientSecret("846B62D0-DEF9-4215-A99D-86E6B8DAB342");
+        .SetClientSecret("846B62D0-DEF9-4215-A99D-86E6B8DAB342")
+        .UseCaching();
 
         options.UseSystemNetHttp();
         options.UseAspNetCore();
+        options.UseDataProtection();
     });
 
 builder.Services.AddAuthentication(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
