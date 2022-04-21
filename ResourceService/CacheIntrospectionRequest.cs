@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Caching.Distributed;
 using OpenIddict.Validation;
 using System.Collections.Concurrent;
 using System.Security.Claims;
@@ -25,9 +26,12 @@ namespace ResourceService
 
         // The IDataProtectionProvider is registered by default in ASP.NET Core
         readonly IDataProtectionProvider _rootProvider;
-        public UseCachedIntrospectionRequest(IDataProtectionProvider rootProvider)
+        private readonly IDistributedCache _cache;
+
+        public UseCachedIntrospectionRequest(IDataProtectionProvider rootProvider, IDistributedCache cache)
         {
             _rootProvider = rootProvider;
+            _cache = cache;
         }
 
         /// <summary>
@@ -55,6 +59,25 @@ namespace ResourceService
 
             // we might want to protect the claimsprincipal that we store, in case the caching becomes an external cache where someone might be able to manipulate the tokens.
             //_rootProvider.CreateProtector("superman").Protect
+            try
+            {
+                var item = _cache.Get(token);
+                if (item is not null)
+                {
+                    var p = _rootProvider.CreateProtector("mega");
+                    var pp = p.Unprotect(item);
+                    var ms = new MemoryStream(pp);
+                    var reader = new BinaryReader(ms);
+                    var pr = new ClaimsPrincipal(reader);
+                    context.Principal = pr;
+                }
+            }
+            catch
+            {
+
+            }
+
+
             if (Cache.TryGetValue(token, out var principal))
             {
                 context.Principal = principal;
@@ -79,6 +102,15 @@ namespace ResourceService
                 .SetType(OpenIddictValidationHandlerType.Custom)
                 .Build();
 
+        // The IDataProtectionProvider is registered by default in ASP.NET Core
+        readonly IDataProtectionProvider _rootProvider;
+        private readonly IDistributedCache _cache;
+
+        public CacheIntrospectionRequest(IDataProtectionProvider rootProvider, IDistributedCache cache)
+        {
+            _rootProvider = rootProvider;
+            _cache = cache;
+        }
 
         public ValueTask HandleAsync(ProcessAuthenticationContext context)
         {
@@ -94,6 +126,21 @@ namespace ResourceService
 
             if (context.Principal is not null)
             {
+                try
+                {
+                    var p = _rootProvider.CreateProtector("mega");
+                    var ms = new MemoryStream();
+                    var writer = new BinaryWriter(ms);
+                    context.Principal.WriteTo(writer);
+                    // NOTE: this seems to lose data in the principal object...
+
+                    byte[] principe = ms.ToArray();
+                    var pp = p.Protect(principe);
+
+                    _cache.Set(token, pp);
+                }
+                catch { }
+
                 UseCachedIntrospectionRequest.Cache.TryAdd(token, context.Principal);
             }
 

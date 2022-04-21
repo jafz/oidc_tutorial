@@ -9,7 +9,7 @@ builder.Services.AddLogging(opt =>
     opt.AddSimpleConsole(opt => opt.TimestampFormat = "[HH:mm:ss] ");
 });
 
-//builder.Services.AddDistributedMemoryCache();
+builder.Services.AddDistributedMemoryCache();
 
 builder.Services.AddOpenIddict()
     .AddValidation(options =>
