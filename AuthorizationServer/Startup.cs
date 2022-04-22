@@ -66,6 +66,8 @@ namespace AuthorizationServer
                 // Register the OpenIddict core components.
                 .AddCore(options =>
                 {
+                    options.ReplaceApplicationManager(typeof(Mana<>));
+
                     // Configure OpenIddict to use the EF Core stores/models.
                     options.UseEntityFrameworkCore()
                         .UseDbContext<OpenIddictDbContext>();
