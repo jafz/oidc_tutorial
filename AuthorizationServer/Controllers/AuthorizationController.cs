@@ -1,12 +1,12 @@
-﻿using Microsoft.AspNetCore;
+using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Security.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -46,15 +46,24 @@ namespace AuthorizationServer.Controllers
                 // Add some claim, don't forget to add destination otherwise it won't be added to the access token.
                 identity.AddClaim("some-claim idTOK", "for ID token", OpenIddictConstants.Destinations.IdentityToken);
                 identity.AddClaim("some-claim2", "for access token", OpenIddictConstants.Destinations.AccessToken);
+                identity.AddClaim("some-claim2", "somewhat", OpenIddictConstants.Destinations.AccessToken);
+                identity.AddClaim("some-claim2", "megagirl", OpenIddictConstants.Destinations.AccessToken);
                 for (int i = 0; i < 10; i++)
                 {
                     identity.AddClaim($"superClaim {i}", "value " + i, OpenIddictConstants.Destinations.IdentityToken, OpenIddictConstants.Destinations.AccessToken);
                 }
 
+                if (request.ClientId == "postman")
+                {
+                    AccountController.AddClaims(identity);
+                }
+
                 claimsPrincipal = new ClaimsPrincipal(identity);
 
-                claimsPrincipal.SetScopes(request.GetScopes());
-                claimsPrincipal.SetResources("postman");
+                var scopes = request.GetScopes();
+                var s = scopes.AddRange(new[] { "unattended", "interactive" });
+                claimsPrincipal.SetScopes(s);
+                claimsPrincipal.SetResources("postman", "resource_server_1");
             }
             else if (request.IsAuthorizationCodeGrantType())
             {
@@ -121,9 +130,14 @@ namespace AuthorizationServer.Controllers
                 _ => throw new InvalidOperationException()
             });
 
-            var allResources = await _manager.ListResourcesAsync(principal.GetScopes()).ToListAsync();
+            var allResources = _manager.ListResourcesAsync(principal.GetScopes());
+            List<string> all = new List<string>();
+            await foreach (var item in allResources)
+            {
+                all.Add(item);
+            }
 
-            principal.SetResources(allResources);
+            principal.SetResources(all);
 
             return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
@@ -138,6 +152,12 @@ namespace AuthorizationServer.Controllers
                     throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
 
             var identifier = (int?)request["hardcoded_identity_id"];
+
+            if (identifier is not null)
+            {
+                var retVal = await HandleHardcodedIdentifierAsync(request);
+                return retVal;
+            }
 
             // Retrieve the user principal stored in the authentication cookie.
             var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -157,12 +177,6 @@ namespace AuthorizationServer.Controllers
                 return challenge;
             }
 
-            if (identifier is not null)
-            {
-                var retVal = await HandleHardcodedIdentifierAsync(request);
-                return retVal;
-            }
-
             if (result.Principal.Identity == null || result.Principal.Identity.Name == null)
                 throw new InvalidOperationException("Can't have empty principal");
 
@@ -172,9 +186,18 @@ namespace AuthorizationServer.Controllers
             {
                 // 'subject' claim which is required
                 new Claim(OpenIddictConstants.Claims.Subject, result.Principal.Identity.Name),
+                new Claim(OpenIddictConstants.Claims.Name, result.Principal.Identity.Name).SetDestinations(Destinations.AccessToken),
                 new Claim("some claim", "some value").SetDestinations(OpenIddictConstants.Destinations.AccessToken),
-                new Claim(OpenIddictConstants.Claims.Email, "some@email").SetDestinations(OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken)
+                new Claim("scopes_test", "some_value, other, other, yet").SetDestinations(OpenIddictConstants.Destinations.AccessToken),
+                new Claim(OpenIddictConstants.Claims.Email, "some@email").SetDestinations(OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken),
+                new Claim("scope", "unattended").SetDestinations(Destinations.AccessToken),
+                new Claim("scope", "interactive").SetDestinations(Destinations.AccessToken),
             };
+            claims.AddRange(result.Principal.Claims.Select(x =>
+            {
+                x.SetDestinations(Destinations.AccessToken);
+                return x;
+            }));
 
             var claimsIdentity = new ClaimsIdentity(claims, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
@@ -182,7 +205,12 @@ namespace AuthorizationServer.Controllers
 
             // Set requested scopes (this is not done automatically)
             claimsPrincipal.SetScopes(request.GetScopes());
-            claimsPrincipal.SetResources("postman");
+            claimsPrincipal.SetResources("postman", "resource_server_1");
+            claimsPrincipal.SetClaims("scopes_test2", new[] { "scome_value", "youyo", "yolo" }.ToImmutableArray());
+            foreach (var cc in claimsPrincipal.Claims.Where(x => x.Type == "scopes_test2"))
+            {
+                cc.SetDestinations(Destinations.AccessToken);
+            }
 
             // Signing in with the OpenIddict authentiction scheme trigger OpenIddict to issue a code (which can be exchanged for an access token)
             var signIn = SignIn(claimsPrincipal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);

@@ -1,13 +1,14 @@
-﻿using System.Diagnostics;
+﻿using Client;
+using IdentityModel.Client;
+using IdentityModel.OidcClient;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
-using IdentityModel.OidcClient;
-using Client;
 
 Console.WriteLine("Press any key to start the authentication process.");
-// Console.ReadKey();
-System.Console.WriteLine("Joke. We autopressed it :)");
+//Console.ReadKey();
+Console.WriteLine("Joke. We autopressed it :)");
 
 using var listener = new HttpListener();
 listener.Prefixes.Add("http://localhost:8739/");
@@ -15,7 +16,7 @@ listener.Start();
 
 string resourceUri1 = "https://localhost:7276/api";
 
-// var browser = new SystemBrowser(8739);
+var browser = new SystemBrowser();
 var options = new OidcClientOptions
 {
     Authority = "https://localhost:44369",
@@ -23,17 +24,31 @@ var options = new OidcClientOptions
     LoadProfile = false,
     // if the redirect uri doesn't match 1:1 what is configured on the server (even a missing slash at the end), this fails with "invalid redirect uri"
     RedirectUri = "http://localhost:8739/",
+    // RedirectUri = "http://localhost:8740/",
+    // RedirectUri = "http://localhost:" + browser.Port + "/",
     Scope = "openid api1 api2",
     IdentityTokenValidator = new JwtHandlerIdentityTokenValidator(),
     // Browser = browser
 };
+
+var client2 = new HttpClient();
+// var response = await client2.RequestClientCredentialsTokenAsync(new ClientCredentialsTokenRequest
+// {
+//     Address = "https://localhost:44369/connect/token",
+
+//     ClientId = "postman",
+//     ClientSecret = "postman-secret",
+//     Scope = "offline_access api openid api1 api2"
+// });
+
+// System.Console.WriteLine("response = " + response.Raw);
 
 var client = new OidcClient(options);
 var parameters = new IdentityModel.Client.Parameters(
     new Dictionary<string, string> { ["hardcoded_identity_id"] = "1" }
 );
 
-// var loginResult = await client.LoginAsync(new LoginRequest());
+// var loginResult = await client.LoginAsync(new LoginRequest() { BrowserDisplayMode = IdentityModel.OidcClient.Browser.DisplayMode.Hidden });
 
 var state = await client.PrepareLoginAsync(parameters);
 
@@ -61,10 +76,12 @@ while (true)
     }
     else
     {
-        Console.WriteLine("Response from Api1: {0}", await GetResourceFromApi1Async(result.AccessToken, resourceUri1));
+        // var at = response?.AccessToken ?? result.AccessToken;
+        var at = result.AccessToken;
+        Console.WriteLine("Response from Api1: {0}", await GetResourceFromApi1Async(at, resourceUri1));
         // test caching
-        Console.WriteLine("Response from Api1: {0}", await GetResourceFromApi1Async(result.AccessToken, resourceUri1));
-        Console.WriteLine("Response from Api1: {0}", await GetResourceFromApi1Async(result.AccessToken, resourceUri1));
+        Console.WriteLine("Response from Api1: {0}", await GetResourceFromApi1Async(at, resourceUri1));
+        Console.WriteLine("Response from Api1: {0}", await GetResourceFromApi1Async(at, resourceUri1));
         // Console.WriteLine("Response from Api2: {0}", await GetResourceFromApi2Async(result.AccessToken));
         break;
     }

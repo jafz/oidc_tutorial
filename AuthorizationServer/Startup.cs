@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,6 +30,31 @@ namespace AuthorizationServer
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllersWithViews();
+
+            //services.AddAuthentication(options =>
+            //    {
+            //        // custom scheme defined in .AddPolicyScheme() below
+            //        options.DefaultScheme = "JWT_OR_COOKIE";
+            //        options.DefaultChallengeScheme = "JWT_OR_COOKIE";
+            //    })
+            //    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+            //    {
+            //        options.LoginPath = "/account/login";
+            //    })
+            //    .AddPolicyScheme("JWT_OR_COOKIE", "JWT_OR_COOKIE", options =>
+            //    {
+            //        // runs on each request
+            //        options.ForwardDefaultSelector = context =>
+            //        {
+            //            // filter by auth type
+            //            string authorization = context.Request.Headers[HeaderNames.Authorization];
+            //            if (!string.IsNullOrEmpty(authorization) && authorization.StartsWith(JwtBearerDefaults.AuthenticationScheme))
+            //                return OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
+
+            //            // otherwise always check for cookie auth
+            //            return CookieAuthenticationDefaults.AuthenticationScheme;
+            //        };
+            //    });
 
             services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
@@ -66,7 +91,7 @@ namespace AuthorizationServer
                 // Register the OpenIddict core components.
                 .AddCore(options =>
                 {
-                    options.ReplaceApplicationManager(typeof(Mana<>));
+                    options.ReplaceApplicationManager(typeof(OpenIddictAppManagerCustom<>));
 
                     // Configure OpenIddict to use the EF Core stores/models.
                     options.UseEntityFrameworkCore()

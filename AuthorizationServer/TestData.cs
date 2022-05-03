@@ -1,4 +1,5 @@
-﻿using OpenIddict.Abstractions;
+using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace AuthorizationServer
@@ -21,7 +22,18 @@ namespace AuthorizationServer
 
             var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
 
-            if (await manager.FindByClientIdAsync("postman", cancellationToken) is null)
+            var postman = await manager.FindByClientIdAsync("postman", cancellationToken);
+            if (postman is OpenIddictEntityFrameworkCoreApplication d)
+            {
+                if (d.Permissions.Contains(Permissions.Prefixes.Scope + "unattended") == false
+                    || d.Permissions.Contains(Permissions.Prefixes.Scope + "interactive") == false
+                   )
+                {
+                    await manager.DeleteAsync(postman, cancellationToken);
+                    postman = null;
+                }
+            }
+            if (postman is null)
             {
                 await manager.CreateAsync(new OpenIddictApplicationDescriptor
                 {
@@ -31,21 +43,26 @@ namespace AuthorizationServer
                     RedirectUris = { new Uri("https://oauth.pstmn.io/v1/callback"), new Uri("http://postman") },
                     Permissions =
                     {
-                        OpenIddictConstants.Permissions.Endpoints.Authorization,
-                        OpenIddictConstants.Permissions.Endpoints.Token,
-                        OpenIddictConstants.Permissions.Endpoints.Introspection,
+                        Permissions.Endpoints.Authorization,
+                        Permissions.Endpoints.Token,
+                        Permissions.Endpoints.Introspection,
 
-                        OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                        OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                        OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                        Permissions.GrantTypes.AuthorizationCode,
+                        Permissions.GrantTypes.ClientCredentials,
+                        Permissions.GrantTypes.RefreshToken,
 
-                        OpenIddictConstants.Permissions.Prefixes.Scope + "api",
+                        Permissions.Prefixes.Scope + "api",
+                        Permissions.Prefixes.Scope + "unattended",
+                        Permissions.Prefixes.Scope + "interactive",
 
-                        OpenIddictConstants.Permissions.ResponseTypes.Code,
+                        Permissions.ResponseTypes.Code,
                     }
                 }, cancellationToken);
             }
-            if (await manager.FindByClientIdAsync("postman2", cancellationToken) is null)
+
+            var findByClientIdAsync = await manager.FindByClientIdAsync("postman2", cancellationToken);
+
+            if (findByClientIdAsync is null)
             {
                 await manager.CreateAsync(new OpenIddictApplicationDescriptor
                 {
@@ -55,21 +72,25 @@ namespace AuthorizationServer
                     RedirectUris = { new Uri("https://oauth.pstmn.io/v1/callback"), new Uri("http://postman") },
                     Permissions =
                     {
-                        OpenIddictConstants.Permissions.Endpoints.Authorization,
-                        OpenIddictConstants.Permissions.Endpoints.Token,
-                        OpenIddictConstants.Permissions.Endpoints.Introspection,
+                        Permissions.Endpoints.Authorization,
+                        Permissions.Endpoints.Token,
+                        Permissions.Endpoints.Introspection,
 
-                        OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                        OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                        OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                        Permissions.GrantTypes.AuthorizationCode,
+                        Permissions.GrantTypes.ClientCredentials,
+                        Permissions.GrantTypes.RefreshToken,
 
-                        OpenIddictConstants.Permissions.Prefixes.Scope + "api",
+                        Permissions.Prefixes.Scope + "api",
+                        Permissions.Prefixes.Scope + "api1",
+                        Permissions.Prefixes.Scope + "api2",
 
-                        OpenIddictConstants.Permissions.ResponseTypes.Code,
+                        Permissions.ResponseTypes.Code,
                     }
                 }, cancellationToken);
             }
-            if (await manager.FindByClientIdAsync("insomnia", cancellationToken) is null)
+
+            var byClientIdAsync = await manager.FindByClientIdAsync("insomnia", cancellationToken);
+            if (byClientIdAsync is null)
             {
                 await manager.CreateAsync(new OpenIddictApplicationDescriptor
                 {
@@ -79,17 +100,17 @@ namespace AuthorizationServer
                     RedirectUris = { new Uri("http://insomnia"), new Uri("https://www.google.com") },
                     Permissions =
                     {
-                        OpenIddictConstants.Permissions.Endpoints.Authorization,
-                        OpenIddictConstants.Permissions.Endpoints.Token,
-                        OpenIddictConstants.Permissions.Endpoints.Introspection,
+                        Permissions.Endpoints.Authorization,
+                        Permissions.Endpoints.Token,
+                        Permissions.Endpoints.Introspection,
 
-                        OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                        OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                        OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                        Permissions.GrantTypes.AuthorizationCode,
+                        Permissions.GrantTypes.ClientCredentials,
+                        Permissions.GrantTypes.RefreshToken,
 
-                        OpenIddictConstants.Permissions.Prefixes.Scope + "api",
+                        Permissions.Prefixes.Scope + "api",
 
-                        OpenIddictConstants.Permissions.ResponseTypes.Code,
+                        Permissions.ResponseTypes.Code,
                     }
                 }, cancellationToken);
             }
