@@ -21,9 +21,15 @@ namespace AuthorizationServer
     }
     public class Startup
     {
+        public static class Settings
+        {
+            public static IConfiguration Configuration;
+        }
         public Startup(IConfigurationRoot configuration)
         {
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+
+            Settings.Configuration = configuration;
         }
 
         public IConfigurationRoot Configuration { get; }
@@ -61,7 +67,8 @@ namespace AuthorizationServer
                 {
                     options.LoginPath = "/account/login";
                 })
-                ;
+                .AddKeyCloak();
+            ;
 
             services.AddDbContext<OpenIddictDbContext>(options =>
             {
@@ -102,6 +109,7 @@ namespace AuthorizationServer
                 .AddServer(options =>
                 {
                     options.AllowClientCredentialsFlow();
+                    options.AllowPasswordFlow();
                     // AllowAuthorizationCodeFlow enables the flow,
                     // RequireProofKeyForCodeExchange is called directly after that, this makes sure all clients are required to use PKCE (Proof Key for Code Exchange).
                     options

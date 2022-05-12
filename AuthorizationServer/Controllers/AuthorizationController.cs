@@ -81,6 +81,48 @@ namespace AuthorizationServer.Controllers
                     throw new InvalidOperationException("Failed to authenticate user");
                 claimsPrincipal = authenticateResult.Principal;
             }
+            else if (request.IsPasswordGrantType())
+            {
+                var identity = new ClaimsIdentity(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+                AccountController.AddClaims(identity);
+                identity.AddClaim("some-claim2", "somewhat", OpenIddictConstants.Destinations.AccessToken, Destinations.IdentityToken);
+                identity.AddClaim("some-claim2", "megagirl", OpenIddictConstants.Destinations.AccessToken, Destinations.IdentityToken);
+
+                var subject = identity.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value ?? "harald";
+                identity.AddClaim(Claims.Subject, subject);
+                claimsPrincipal = new ClaimsPrincipal(identity);
+                claimsPrincipal.SetScopes("offline_access", "api", "openid");
+
+                // Note: the client credentials are automatically validated by OpenIddict:
+                // if client_id or client_secret are invalid, this action won't be invoked.
+
+                //identity = new ClaimsIdentity(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+
+                //// Subject (sub) is a required field, we use the client id as the subject identifier here.
+                //identity.AddClaim(OpenIddictConstants.Claims.Subject, request.ClientId ?? throw new InvalidOperationException());
+
+                //// Add some claim, don't forget to add destination otherwise it won't be added to the access token.
+                //identity.AddClaim("some-claim idTOK", "for ID token", OpenIddictConstants.Destinations.IdentityToken);
+                //identity.AddClaim("some-claim2", "for access token", OpenIddictConstants.Destinations.AccessToken);
+                //identity.AddClaim("some-claim2", "somewhat", OpenIddictConstants.Destinations.AccessToken);
+                //identity.AddClaim("some-claim2", "megagirl", OpenIddictConstants.Destinations.AccessToken);
+                //for (int i = 0; i < 10; i++)
+                //{
+                //    identity.AddClaim($"superClaim {i}", "value " + i, OpenIddictConstants.Destinations.IdentityToken, OpenIddictConstants.Destinations.AccessToken);
+                //}
+
+                //if (request.ClientId == "postman")
+                //{
+                //    AccountController.AddClaims(identity);
+                //}
+
+                //claimsPrincipal = new ClaimsPrincipal(identity);
+
+                //var scopes = request.GetScopes();
+                //var s = scopes.AddRange(new[] { "unattended", "interactive" });
+                //claimsPrincipal.SetScopes(s);
+                //claimsPrincipal.SetResources("postman", "resource_server_1");
+            }
             else
             {
                 throw new InvalidOperationException("The specified grant type is not supported.");

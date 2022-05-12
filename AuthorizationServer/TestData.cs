@@ -27,6 +27,7 @@ namespace AuthorizationServer
             {
                 if (d.Permissions.Contains(Permissions.Prefixes.Scope + "unattended") == false
                     || d.Permissions.Contains(Permissions.Prefixes.Scope + "interactive") == false
+                    || d.Permissions.Contains(Permissions.GrantTypes.Password) == false
                    )
                 {
                     await manager.DeleteAsync(postman, cancellationToken);
@@ -49,6 +50,7 @@ namespace AuthorizationServer
 
                         Permissions.GrantTypes.AuthorizationCode,
                         Permissions.GrantTypes.ClientCredentials,
+                        Permissions.GrantTypes.Password,
                         Permissions.GrantTypes.RefreshToken,
 
                         Permissions.Prefixes.Scope + "api",
@@ -90,6 +92,17 @@ namespace AuthorizationServer
             }
 
             var byClientIdAsync = await manager.FindByClientIdAsync("insomnia", cancellationToken);
+            if (byClientIdAsync is OpenIddictEntityFrameworkCoreApplication in2)
+            {
+                if (in2.Permissions.Contains(Permissions.Prefixes.Scope + "unattended") == false
+                    || in2.Permissions.Contains(Permissions.Prefixes.Scope + "interactive") == false
+                    || in2.Permissions.Contains(Permissions.GrantTypes.Password) == false
+                   )
+                {
+                    await manager.DeleteAsync(byClientIdAsync, cancellationToken);
+                    byClientIdAsync = null;
+                }
+            }
             if (byClientIdAsync is null)
             {
                 await manager.CreateAsync(new OpenIddictApplicationDescriptor
@@ -106,6 +119,7 @@ namespace AuthorizationServer
 
                         Permissions.GrantTypes.AuthorizationCode,
                         Permissions.GrantTypes.ClientCredentials,
+                        Permissions.GrantTypes.Password,
                         Permissions.GrantTypes.RefreshToken,
 
                         Permissions.Prefixes.Scope + "api",

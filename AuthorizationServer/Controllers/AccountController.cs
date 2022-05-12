@@ -27,7 +27,7 @@ namespace AuthorizationServer.Controllers
 
             identity.AddClaims(current.Claims.Select(x =>
             {
-                x.SetDestinations(OpenIddictConstants.Destinations.AccessToken);
+                x.SetDestinations(OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken);
                 return x;
             }));
             identity.AddClaim(new Claim("name", "postman").SetDestinations(OpenIddictConstants.Destinations.AccessToken));
